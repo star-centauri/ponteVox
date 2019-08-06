@@ -132,7 +132,6 @@ begin
     textBackground (BLUE);
     Writeln ('Listar Ponte: ');
     writeln;
-    textBackground (BLACK);
 
     {formulario de exibicao de  ponte}
 
@@ -141,7 +140,7 @@ begin
     formcampo('', 'Tipo', tipo, 20);
     formcampo('', 'Servidor', servidor, 50);
     formcampoint('', 'Porta', porta);
-    formcampo('', 'Conta', conta, 20);
+    formcampo('', 'Conta', conta, 100);
     formcampo('', 'Senha', senha, 15);
     formEdita(true);
 

@@ -53,43 +53,25 @@ begin
 end;
 
 {--------------------------------------------------------}
-{                        Validação                       }
+{              Retornar ponte do pontes.ini              }
 {--------------------------------------------------------}
-function validacao (nome: shortstring): boolean;
-var
-    spontes: TstringList;
-    i : integer;
-    aux : boolean;
-
+procedure getPonteSintAmbiente(ponteNome: string; out ponte: UserPonte);
 begin
-    spontes := sintItensAmbienteArq('', arqIniPontes);
-
-    {Percorrendo a StringList}
-
-    aux := false;
-    for i := 0 to spontes.count-1 do
-    begin
-        if nome = spontes[i] then
-        begin
-            aux := true;
-            break;
-        end
-        else
-            aux := false;
-    end;
-
-    result := aux;
-    spontes.free;
+    ponte.Nome     := sintambientearq(ponteNome,           'Nome',     'Não registrado', arqIniPontes);
+    ponte.Tipo     := sintambientearq(ponteNome,           'Tipo',     'Não registrado', arqIniPontes);
+    ponte.Servidor := sintambientearq(ponteNome,           'Servidor', 'Não registrado', arqIniPontes);
+    ponte.Porta    := strtoint(sintambientearq(ponteNome,  'Porta',    'Não registrado', arqIniPontes));
+    ponte.Conta    := sintambientearq(ponteNome,           'Conta',    'Não registrado', arqIniPontes);
+    ponte.Senha    := sintambientearq(ponteNome,           'Senha',    'Não registrado', arqIniPontes);
+    ponte.Auth     := StrToBool(sintambientearq(ponteNome, 'Auth',     'Não registrado', arqIniPontes));
 end;
 
 {--------------------------------------------------------}
 {                     editar ponte                       }
 {--------------------------------------------------------}
-procedure editar(nomeDig: shortstring);
+procedure editar(ponteNome: string);
 var
-    snome: string;
-    tipo, servidor, conta, senha, nome : shortstring;
-    porta : integer;
+    ponte: UserPonte;
 
 begin
     clrscr;
@@ -98,86 +80,40 @@ begin
     writeln;
     textBackground (BLACK);
 
-    if nomeDig = '' then
-        begin
-            mensagem ('PTDIGITEL', 0); // digite a ponte a listar
-            sintreadln(snome);
+    getPonteSintAmbiente(ponteNome, ponte);
+    ponte.Senha := aplicaSenha(ponte.Senha);
 
-            if snome = '' then
-                exit;
+    criarFormPonte(ponte);
+
+    if ponte.Nome <> '' then
+        begin
+            ponte.Senha := aplicaSenha(ponte.Senha);
+
+            {inserindo no arquivo ini}
+            gravarPonteSintAmbiente(ponte);
+
+            {fim da inserção}
+            mensagem ('PTPONTE', 0); // a ponte
+            sintwrite(ponte.Nome);
+            mensagem('PTPONTEI', 0); // foi inserida com sucesso
         end
     else
-        snome := nomeDig;
-
-    writeln;
-    {recebendo valores}
-    nome := sintambientearq(snome, 'Nome', 'Não registrado', arqIniPontes);
-    tipo := sintambientearq(snome, 'Tipo', 'Não registrado', arqIniPontes);
-    servidor := sintambientearq(snome, 'Servidor', 'Não registrado', arqIniPontes);
-    porta := strtoint(sintambientearq(snome, 'Porta', 'Não registrado', arqIniPontes));
-    conta := sintambientearq(snome, 'Conta', 'Não registrado', arqIniPontes);
-    senha := sintambientearq(snome, 'Senha', 'Não registrado', arqIniPontes);
-    {valores recebidos}
-    senha := aplicaSenha(senha);
-
-    {imprimindo valores recebidos}
-    clrscr;
-    textBackground (BLUE);
-    Writeln ('Listar Ponte: ');
-    writeln;
-
-    {formulario de exibicao de  ponte}
-
-    formCria;
-    formCampo('', 'Nome', nome, 50);
-    formcampo('', 'Tipo', tipo, 20);
-    formcampo('', 'Servidor', servidor, 50);
-    formcampoint('', 'Porta', porta);
-    formcampo('', 'Conta', conta, 100);
-    formcampo('', 'Senha', senha, 15);
-    formEdita(true);
-
-    {fim do formulario}
-
-    if nome<>'' then
-    begin
-        senha := aplicaSenha(senha);
-
-        {inserindo no arquivo ini}
-        sintGravaAmbienteArq(nome,'Nome', nome, arqIniPontes);
-        sintGravaAmbienteArq(nome, 'Tipo', UpperCase(tipo), arqIniPontes);
-        sintGravaAmbienteArq(nome, 'Servidor', servidor, arqIniPontes);
-        sintGravaAmbienteArq(nome, 'Porta', intTostr(porta), arqIniPontes);
-        sintGravaAmbienteArq(nome, 'Conta', conta, arqIniPontes);
-        sintGravaAmbienteArq(nome, 'Senha', senha, arqIniPontes);
-
-        {fim da inserção}
-        writeln;
-        mensagem ('PTPONTE', 0); // a ponte
-        sintwrite(nome);
-        mensagem('PTPONTEI', 0); // foi inserida com sucesso
-    end
-    else
-    begin
-        textBackground (MAGENTA);
-        writeln;
-        mensagem ('PTBRANCO', 1);  //'Nome em branco.  Registro ignorado'
-        textBackground (BLACK);
-        delay (2000);
-        exit;
-    end;
-
+        begin
+            textBackground (MAGENTA);
+            writeln;
+            mensagem ('PTBRANCO', 1);  //'Nome em branco.  Registro ignorado'
+            textBackground (BLACK);
+            exit;
+        end;
 end;
 
 
 {--------------------------------------------------------}
 {                         listar ponte                   }
 {--------------------------------------------------------}
-procedure listar;
+procedure listar(ponteNome: string);
 var
-    snome: string;
-    nome, tipo, servidor, conta, senha : shortstring;
-    porta : integer;
+    ponte: UserPonte;
 
 begin
     clrscr;
@@ -186,54 +122,35 @@ begin
     writeln;
     textBackground (BLACK);
 
-    mensagem ('PTDIGITEL', 0); // digite a ponte a listar
-    sintreadln(snome);
+    if ponteNome = '' then
+        begin
+            sintWrite('Nome dá ponte não está definida.');
+            exit;
+        end;
 
-    if snome = '' then
-        exit;
+    getPonteSintAmbiente(ponteNome, ponte);
 
-    writeln;
-    {recebendo valores}
-
-    nome := sintambientearq(snome, 'Nome', 'Não registrado', arqIniPontes);
-    tipo := sintambientearq(snome, 'Tipo', 'Não registrado', arqIniPontes);
-    servidor := sintambientearq(snome, 'Servidor', 'Não registrado', arqIniPontes);
-    porta := strtoint(sintambientearq(snome, 'Porta', 'Não registrado', arqIniPontes));
-    conta := sintambientearq(snome, 'Conta', 'Não registrado', arqIniPontes);
-    senha := sintambientearq(snome, 'Senha', 'Não registrado', arqIniPontes);
-    {valores recebidos}
-
-    if nome <> 'Não registrado' then
+    if ponte.Nome <> 'Não registrado' then
     begin
         {imprimindo valores recebidos}
-        clrscr;
-        textBackground (BLUE);
-        Writeln ('Listar Ponte: ');
-        writeln;
         textBackground (BLACK);
 
-        senha := aplicaSenha(senha);
-
+        ponte.Senha := aplicaSenha(ponte.Senha);
         {formulario de exibicao de  ponte}
         formCria;
-        formCampo('', 'Nome', nome,50);
-        formCampo('', 'Tipo', tipo,3);
-        formCampo('', 'Servidor', servidor, 50);
-        formCampoint('', 'Porta', porta);
-        formCampo('', 'Conta', conta,20);
-        formcampo('', 'Senha', senha,15);
+        formCampo    ('', 'Nome',            ponte.Nome,50);
+        formCampo    ('', 'Tipo',            ponte.Tipo,3);
+        formCampo    ('', 'Servidor',        ponte.Servidor, 50);
+        formCampoint ('', 'Porta',           ponte.Porta);
+        formCampo    ('', 'Conta',           ponte.Conta,20);
+        formcampo    ('', 'Senha',           ponte.Senha,15);
+        formCampoBool('', 'Auth automático', ponte.Auth);
         formEdita(false);
 
-        {fim do formulario}
-
     end;
 
-    if nome = 'Não registrado' then
-    begin
-        clrscr;
-        mensagem ('PTNREGIST', 1); // ponte não registrada
-        delay(2000)
-    end;
+    if ponte.Nome = 'Não registrado' then
+        mensagem ('PTNREGIST', 1); { ponte não registrada }
 
     clrscr;
 end;
@@ -241,10 +158,7 @@ end;
 {--------------------------------------------------------}
 {                       remover ponte                    }
 {--------------------------------------------------------}
-procedure remover;
-var
-    nome : string;
-
+procedure remover(ponteNome: string);
 begin
     clrscr;
     textBackground (BLUE);
@@ -252,97 +166,71 @@ begin
     writeln;
     textBackground (BLACK);
 
-    mensagem ('PTDIGITE', 0); //digite o nome da ponte a ser removida
-    sintreadln(nome);
+    if ponteNome = '' then
+        begin
+            sintWrite('Nome dá ponte não está definida.');
+            exit;
+        end;
 
-    if nome = '' then exit;
-
-    sintremoveambientearq(nome, '', arqIniPontes);
-
-    clrscr;
-    textBackground (BLUE);
-    Writeln ('Remover Ponte: ');
-    writeln;
-    textBackground (BLACK);
-    mensagem ('PTSUCESSO', 0); //ponte removida com sucesso
-    delay(2000);
+    sintremoveambientearq(ponteNome, '', arqIniPontes);
+    mensagem ('PTSUCESSO', 0); { ponte removida com sucesso }
     clrscr;
 end;
 
 {--------------------------------------------------------}
-{                     mostra uma Ponte                   }
+{         executar comando da ponte selecionada          }
 {--------------------------------------------------------}
-function mostraumaPonte (n: integer; sl: TStringList): char;
-var
-    nome, tipo, servidor, conta, senha : shortstring;
-    porta : integer;
-    snome : string;
-
+procedure executarComandoSelecionado(option: char; ponteNome: string);
 begin
-    if n < 1 then
-        begin
-           sintBip;
-           result := #81;
-           exit;
-        end;
+    limpaBaixo (wherey);
 
-    if n > sl.count then
-        begin
-           sintBip;
-           result := #73;
-           exit;
-        end;
-
-    snome:=sl[n-1];
-
-    nome := sintambientearq(snome, 'Nome', 'Não registrado', arqIniPontes);
-    tipo := sintambientearq(snome, 'Tipo', 'Não registrado', arqIniPontes);
-    servidor := sintambientearq(snome, 'Servidor', 'Não registrado', arqIniPontes);
-    porta := strtoint(sintambientearq(snome, 'Porta', 'Não registrado', arqIniPontes));
-    conta := sintambientearq(snome, 'Conta', 'Não registrado', arqIniPontes);
-    senha := sintambientearq(snome, 'Senha', 'Não registrado', arqIniPontes);
-
-    {valores recebidos}
-    if nome <> 'Não registrado' then
-    begin
-         {imprimindo valores recebidos}
-         clrscr;
-         textBackground (BLUE);
-         Writeln ('Listar Ponte: ');
-         writeln;
-         textBackground (BLACK);
-
-         senha := aplicaSenha(senha);
-
-         {formulario de exibicao de ponte}
-         formCria;
-         formCampo('', 'Nome', nome,50);
-         formcampo('', 'Tipo', tipo,3);
-         formcampo('', 'Servidor', servidor, 50);
-         formcampoint('', 'Porta', porta);
-         formcampo('', 'Conta', conta,20);
-         formcampo('', 'Senha', senha,15);
-
-         mostraumaPonte := formEdita(false);   // o retorno é um caractere que termina o formulário
-
-        {fim do formulario}
-
-    end
+    case upcase(option) of
+        'L': listar(ponteNome);   { procedure de listagem de pontes    }
+        'R': remover(ponteNome);  { procedure de remoção de pontes    }
+        'E': editar(ponteNome);   { procedure de edição de ponte}
     else
-        begin
-            mensagem ('PTNREG', 0); // não registrado
-            delay(2000);
-            result := esc;
-        end;
+        textBackground (MAGENTA);
+        mensagem ('PTOPCAOI', 0); //opção inválida
+        textBackground (BLACK);
+        clrscr;
+    end;
 end;
 
 {--------------------------------------------------------}
-{                      folhear ponte                     }
+{           executar comando da ponte existente          }
 {--------------------------------------------------------}
-procedure folhear;
-var sl : TStringList;
+function selecionarOpcaoPonte: char;
+var
+    n: integer;
+const
+    tabLetrasOpcao: string = 'LRE' + ESC;
+begin
+    sintWrite('O que deseja fazer com a Ponte?');
+
+    popupMenuCria (wherex, wherey, 50, length(tabLetrasOpcao), MAGENTA);
+    popupMenuAdiciona ('',  'L - Listar Ponte');
+    popupMenuAdiciona ('',  'R - Remover Ponte');
+    popupMenuAdiciona ('',  'E - Editar Ponte');
+
+    popupMenuAdiciona ('PTTERMINAR', 'ESC - terminar' );
+
+    n := popupMenuSeleciona;
+    if n > 0 then
+        begin
+            Result := tabLetrasOpcao[n];
+            writeln(tabLetrasOpcao[n]);
+        end
+    else
+        Result := ESC;
+end;
+
+{--------------------------------------------------------}
+{                      folhear pontes                    }
+{--------------------------------------------------------}
+procedure folhear();
+var sl: TStringList;
     i, n: integer;
-    c: char;
+    opcao: char;
     s: string;
 
 begin
@@ -367,40 +255,34 @@ begin
 
     n := popupMenuSeleciona;
 
-
     if n > 0 then
     begin
-      repeat
-        c := mostraumaPonte(n, sl);
-        if c = #73 then
-            n := n - 1
-        else
-        if c = #81 then
-            n := n + 1;
-      until c = #27;
-
+        opcao := selecionarOpcaoPonte;
+        executarComandoSelecionado(opcao, sl[n-1]);
     end;
-    sl.free;
 
 end;
 
-function verificarPonteExiste(out ponte: UserPonte) : boolean;
+{--------------------------------------------------------}
+{           Verificar se ponte já foi criada             }
+{--------------------------------------------------------}
+function verificarPonteExiste(ponteNome: string) : boolean;
 var
     existeNome: string;
 begin
-    existeNome := sintambientearq(ponte.Nome, 'Nome', '', arqIniPontes);
+    Result := false;
+    existeNome := sintambientearq(ponteNome, 'Nome', '', arqIniPontes);
 
     if existeNome <> '' then
         begin
             sintWriteLn('A ponte ' + existeNome + ' já foi criada.');
             sintWriteLn('Deseja sobrescever a anterior?');
+            
             if popupMenuPorLetra('SN') = 'N' then
                 begin
-                    sintWriteLn('Infome um novo nome, ou aperte ESC para excluir ponte e voltar ao menu principal.');
-                    qq();
-                end
-            else
-                Result := true;
+                    sintWriteLn('Infome um novo nome, ou deixe o nome em branco e aperte ESC para excluir.');
+                    Result := true;
+                end;
         end
 end;
 
@@ -410,50 +292,38 @@ end;
 procedure inserir;
 var
     novaPonte: UserPonte;
-    valida : boolean;
+    validaSeExiste: boolean;
 
 begin
     clrscr;
-    textBackground (BLUE);
     Writeln ('Adicionar Ponte: ');
     writeln;
     textBackground (BLACK);
+    TextColor(White);
 
+    validaSeExiste := true;
+    novaPonte.Nome := '';
     {formulario de inserção de pontes}
-    criarFormPonte(novaPonte);
-
-    if novaPonte.Nome = '' then
-        begin
-            textBackground (BLUE);
-            mensagem('PTBRANCO', 0); // nome em branco registro ignorado
-            textBackground (BLACK);
-            delay (2000);
-            exit;
-        end;
-
-    {Validar se ponte existe}
-
-
-
-
-
-    valida := validacao(novaPonte.Nome);
-
-    if valida = true then
-    begin
-          editar(novaponte.Nome); // solicitando a procedure de edição
-    end
-    {fim da validação de pontes}
-    else
-    begin
-        gravarPonteSintAmbiente(novaPonte);
-
-        writeln;
-        mensagem ('PTPONTE', 0); // a ponte
-        sintwrite(novaPonte.Nome);
-        mensagem('PTPONTEI', 0); // foi inserida com sucesso
+    Repeat
         clrscr;
-    end;
+        criarFormPonte(novaPonte);
+
+        if novaPonte.Nome = '' then
+            begin
+                textBackground (BLUE);
+                mensagem('PTBRANCO', 0); { nome em branco registro ignorado }
+                textBackground (BLACK);
+                exit;
+            end
+        else
+            validaSeExiste := verificarPonteExiste(novaPonte.Nome);
+    Until not validaSeExiste;
+
+    gravarPonteSintAmbiente(novaPonte);
+    mensagem ('PTPONTE', 0); // a ponte
+    sintwrite(novaPonte.Nome);
+    mensagem('PTPONTEI', 0); // foi inserida com sucesso
+    clrscr;
 end;
 
 {--------------------------------------------------------}
@@ -465,10 +335,7 @@ begin
 
     case upcase(option) of
         'I': inserir;  { procedure de inserção de pontes    }
-        'L': listar;   { procedure de listagem de pontes    }
-        //'R': remover;  { procedure de remoção de pontes    }
-        //'F': folhear;  { procedure de folheamento de pontes  }
-        //'E': editar('');   { procedure de edição de ponte}
+        'F': folhear;  { procedure de folheamento de pontes  }
     else
         textBackground (MAGENTA);
         mensagem ('PTOPCAOI', 0); //opção inválida
@@ -484,7 +351,7 @@ function selSetasOpcao: char;
 var
     n: integer;
 const
-    tabLetrasOpcao: string = 'IL' + ESC;
+    tabLetrasOpcao: string = 'IF' + ESC;
 
 begin
     garanteEspacoTela (9);

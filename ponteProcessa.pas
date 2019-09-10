@@ -67,11 +67,35 @@ begin
 end;
 
 {--------------------------------------------------------}
+{           Verificar se ponte já foi criada             }
+{--------------------------------------------------------}
+function verificarPonteExiste(ponteNome: string) : boolean;
+var
+    existeNome: string;
+begin
+    Result := false;
+    existeNome := sintambientearq(ponteNome, 'Nome', '', arqIniPontes);
+
+    if existeNome <> '' then
+        begin
+            sintWriteLn('A ponte ' + existeNome + ' já foi criada.');
+            sintWriteLn('Deseja sobrescever a anterior?');
+            
+            if popupMenuPorLetra('SN') = 'N' then
+                begin
+                    sintWriteLn('Infome um novo nome, ou deixe o nome em branco e aperte ESC para excluir.');
+                    Result := true;
+                end;
+        end
+end;
+
+{--------------------------------------------------------}
 {                     editar ponte                       }
 {--------------------------------------------------------}
 procedure editar(ponteNome: string);
 var
     ponte: UserPonte;
+    validaSeExiste: boolean;
 
 begin
     clrscr;
@@ -83,28 +107,35 @@ begin
     getPonteSintAmbiente(ponteNome, ponte);
     ponte.Senha := aplicaSenha(ponte.Senha);
 
-    criarFormPonte(ponte);
+    validaSeExiste := true;
+    
+    {formulario de inserção de pontes}
+    Repeat
+        clrscr;
+        criarFormPonte(ponte);
 
-    if ponte.Nome <> '' then
-        begin
-            ponte.Senha := aplicaSenha(ponte.Senha);
+        if ponte.Nome = '' then
+            begin
+                textBackground (BLUE);
+                mensagem('PTBRANCO', 0); { nome em branco registro ignorado }
+                textBackground (BLACK);
+                clrscr;
+                exit;
+            end
+        else
+            validaSeExiste := verificarPonteExiste(ponte.Nome);
+    Until not validaSeExiste;
 
-            {inserindo no arquivo ini}
-            gravarPonteSintAmbiente(ponte);
+    ponte.Senha := aplicaSenha(ponte.Senha);
 
-            {fim da inserção}
-            mensagem ('PTPONTE', 0); // a ponte
-            sintwrite(ponte.Nome);
-            mensagem('PTPONTEI', 0); // foi inserida com sucesso
-        end
-    else
-        begin
-            textBackground (MAGENTA);
-            writeln;
-            mensagem ('PTBRANCO', 1);  //'Nome em branco.  Registro ignorado'
-            textBackground (BLACK);
-            exit;
-        end;
+    {inserindo no arquivo ini}
+    sintremoveambientearq(ponteNome, '', arqIniPontes);
+    gravarPonteSintAmbiente(ponte);
+
+    {fim da inserção}
+    mensagem ('PTPONTE', 0); // a ponte
+    sintwrite(ponte.Nome);
+    mensagem('PTPONTEI', 0); // foi inserida com sucesso
 end;
 
 
@@ -205,9 +236,10 @@ var
 const
     tabLetrasOpcao: string = 'LRE' + ESC;
 begin
+    clrscr;
     sintWrite('O que deseja fazer com a Ponte?');
 
-    popupMenuCria (wherex, wherey, 50, length(tabLetrasOpcao), MAGENTA);
+    popupMenuCria (wherex+1, wherey, 40, length(tabLetrasOpcao), MAGENTA);
     popupMenuAdiciona ('',  'L - Listar Ponte');
     popupMenuAdiciona ('',  'R - Remover Ponte');
     popupMenuAdiciona ('',  'E - Editar Ponte');
@@ -264,35 +296,25 @@ begin
 end;
 
 {--------------------------------------------------------}
-{           Verificar se ponte já foi criada             }
-{--------------------------------------------------------}
-function verificarPonteExiste(ponteNome: string) : boolean;
-var
-    existeNome: string;
-begin
-    Result := false;
-    existeNome := sintambientearq(ponteNome, 'Nome', '', arqIniPontes);
-
-    if existeNome <> '' then
-        begin
-            sintWriteLn('A ponte ' + existeNome + ' já foi criada.');
-            sintWriteLn('Deseja sobrescever a anterior?');
-            
-            if popupMenuPorLetra('SN') = 'N' then
-                begin
-                    sintWriteLn('Infome um novo nome, ou deixe o nome em branco e aperte ESC para excluir.');
-                    Result := true;
-                end;
-        end
-end;
-
-{--------------------------------------------------------}
 {                     Inserir Pontes                     }
 {--------------------------------------------------------}
 procedure inserir;
 var
     novaPonte: UserPonte;
     validaSeExiste: boolean;
+
+{------------------ Remover lixo variável ---------------------}
+procedure limparLixo(out ponte: UserPonte);
+begin
+    ponte.Nome := '';
+    ponte.Tipo := '';
+    ponte.Servidor := '';
+    ponte.Porta := 0;
+    ponte.Conta := '';
+    ponte.Senha := '';
+    ponte.Auth := false;
+end;
+{--------------------------------------------------------}
 
 begin
     clrscr;
@@ -302,7 +324,8 @@ begin
     TextColor(White);
 
     validaSeExiste := true;
-    novaPonte.Nome := '';
+    limparLixo(novaPonte);
+
     {formulario de inserção de pontes}
     Repeat
         clrscr;
@@ -313,6 +336,7 @@ begin
                 textBackground (BLUE);
                 mensagem('PTBRANCO', 0); { nome em branco registro ignorado }
                 textBackground (BLACK);
+                clrscr;
                 exit;
             end
         else
@@ -331,8 +355,6 @@ end;
 {--------------------------------------------------------}
 procedure executarComando(option: char);
 begin
-    limpaBaixo (wherey);
-
     case upcase(option) of
         'I': inserir;  { procedure de inserção de pontes    }
         'F': folhear;  { procedure de folheamento de pontes  }
@@ -355,7 +377,7 @@ const
 
 begin
     garanteEspacoTela (9);
-    popupMenuCria (wherex, wherey, 50, length(tabLetrasOpcao), MAGENTA);
+    popupMenuCria (wherex, wherey, 40, length(tabLetrasOpcao), MAGENTA);
     popupMenuAdiciona ('PTINSERIR',  'I - Inserir Ponte');
     popupMenuAdiciona ('PTLISTAR',   'L - Listar Ponte');
 

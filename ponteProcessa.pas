@@ -24,13 +24,13 @@ const
 begin
     formCria;
 
-    formCampo      ('PTNOME',     'Nome',                                            ponte.Nome,     50);
+    formCampo      ('PTNOME',     'Nome',                                            ponte.Nome,     100);
     formCampolista ('PTTIPO',     'Tipo (F9 Ajuda)',                                 ponte.Tipo,     10, tipoponte);
-    formcampo      ('PTSERVIDOR', 'Servidor',                                        ponte.Servidor, 50);
+    formcampo      ('PTSERVIDOR', 'Servidor',                                        ponte.Servidor, 200);
     formcampoint   ('PTPORTA',    'Porta',                                           ponte.Porta);
     formCampoBool  ('',           'Autenticação automática? (somente para DROPBOX)', ponte.Auth);
-    formcampo      ('PTCONTA',    'Conta',                                           ponte.Conta,    20);
-    formcampo      ('PTSENHA',    'Senha',                                           ponte.Senha,    15);
+    formcampo      ('PTCONTA',    'Conta',                                           ponte.Conta,    200);
+    formcampo      ('PTSENHA',    'Senha',                                           ponte.Senha,    150);
     formEdita(true);
 end;
 
@@ -63,7 +63,7 @@ begin
     ponte.Porta    := strtoint(sintambientearq(ponteNome,  'Porta',    'Não registrado', arqIniPontes));
     ponte.Conta    := sintambientearq(ponteNome,           'Conta',    'Não registrado', arqIniPontes);
     ponte.Senha    := sintambientearq(ponteNome,           'Senha',    'Não registrado', arqIniPontes);
-    ponte.Auth     := StrToBool(sintambientearq(ponteNome, 'Auth',     'Não registrado', arqIniPontes));
+    ponte.Auth     := StrToBool(sintambientearq(ponteNome, 'Auth',     '0'           , arqIniPontes));
 end;
 
 {--------------------------------------------------------}
@@ -79,7 +79,7 @@ begin
     if existeNome <> '' then
         begin
             sintWriteLn('A ponte ' + existeNome + ' já foi criada.');
-            sintWriteLn('Deseja sobrescever a anterior?');
+            sintWriteLn('Deseja sobresceve-lá?');
             
             if popupMenuPorLetra('SN') = 'N' then
                 begin
@@ -110,32 +110,28 @@ begin
     validaSeExiste := true;
     
     {formulario de inserção de pontes}
-    Repeat
-        clrscr;
-        criarFormPonte(ponte);
+    clrscr;
+    criarFormPonte(ponte);
 
-        if ponte.Nome = '' then
-            begin
-                textBackground (BLUE);
-                mensagem('PTBRANCO', 0); { nome em branco registro ignorado }
-                textBackground (BLACK);
-                clrscr;
-                exit;
-            end
-        else
-            validaSeExiste := verificarPonteExiste(ponte.Nome);
-    Until not validaSeExiste;
+    if ponte.Nome = '' then
+        begin
+            textBackground (BLUE);
+            mensagem('PTBRANCO', 0); { nome em branco registro ignorado }
+            textBackground (BLACK);
+            clrscr;
+            exit;
+        end;
 
     ponte.Senha := aplicaSenha(ponte.Senha);
 
-    {inserindo no arquivo ini}
-    sintremoveambientearq(ponteNome, '', arqIniPontes);
-    gravarPonteSintAmbiente(ponte);
-
-    {fim da inserção}
-    mensagem ('PTPONTE', 0); // a ponte
-    sintwrite(ponte.Nome);
-    mensagem('PTPONTEI', 0); // foi inserida com sucesso
+    sintWriteLn('Confirmar alterações?');
+    if popupMenuPorLetra('SN') = 'S' then
+        begin
+           {inserindo no arquivo ini}
+           sintremoveambientearq(ponteNome, '', arqIniPontes);
+           gravarPonteSintAmbiente(ponte);
+           sintWriteLn('Ponte ' + ponte.Nome + ' editada com sucesso.');
+        end;
 end;
 
 
@@ -177,7 +173,6 @@ begin
         formcampo    ('', 'Senha',           ponte.Senha,15);
         formCampoBool('', 'Auth automático', ponte.Auth);
         formEdita(false);
-
     end;
 
     if ponte.Nome = 'Não registrado' then
@@ -203,8 +198,12 @@ begin
             exit;
         end;
 
-    sintremoveambientearq(ponteNome, '', arqIniPontes);
-    mensagem ('PTSUCESSO', 0); { ponte removida com sucesso }
+    sintWriteLn('Confirma remoção da ponte ' + ponteNome + '?');
+    if popupMenuPorLetra('SN') = 'S' then
+        begin
+            sintremoveambientearq(ponteNome, '', arqIniPontes);
+            mensagem ('PTSUCESSO', 0); { ponte removida com sucesso }
+        end;
     clrscr;
 end;
 
@@ -219,6 +218,7 @@ begin
         'L': listar(ponteNome);   { procedure de listagem de pontes    }
         'R': remover(ponteNome);  { procedure de remoção de pontes    }
         'E': editar(ponteNome);   { procedure de edição de ponte}
+        ESC: exit;
     else
         textBackground (MAGENTA);
         mensagem ('PTOPCAOI', 0); //opção inválida
@@ -234,7 +234,7 @@ function selecionarOpcaoPonte: char;
 var
     n: integer;
 const
-    tabLetrasOpcao: string = 'LRE' + ESC;
+    tabLetrasOpcao: string = 'LREV' + ESC;
 begin
     clrscr;
     sintWrite('O que deseja fazer com a Ponte?');
@@ -379,7 +379,7 @@ begin
     garanteEspacoTela (9);
     popupMenuCria (wherex, wherey, 40, length(tabLetrasOpcao), MAGENTA);
     popupMenuAdiciona ('PTINSERIR',  'I - Inserir Ponte');
-    popupMenuAdiciona ('PTLISTAR',   'L - Listar Ponte');
+    popupMenuAdiciona ('PTLISTAR',   'F - Folhear Pontes');
 
     popupMenuAdiciona ('PTTERMINAR', 'ESC - terminar' );
 
@@ -397,27 +397,18 @@ end;
 {            seleciona a teclas de ações                 }
 {--------------------------------------------------------}
 procedure selecionarOpcoes(out processa: boolean);
-var keypress1, keypress2: char;
-    opcao: string;
+var opcao: char;
 
 begin
-    opcao := '';
-    sintLeTecla (keypress1, keypress2);
+    opcao := selSetasOpcao;
 
-    if (keypress1 = #0) and ((keypress2 = CIMA) or (keypress2 = BAIX) or (keypress2 = F9)) then
-        begin
-            keypress1 := selSetasOpcao;
-            if keypress1 <> #$1b then
-                opcao := copy(opcoesItemSelecionado, pos('-', opcoesItemSelecionado)-1, 999);
-        end;
-
-    if keypress1 = ESC then
+    if opcao = ESC then
         begin
             processa := false;
             exit;
         end;
 
-    executarComando(keypress1);
+    executarComando(opcao);
 end;
 
 {--------------------------------------------------------}
@@ -431,7 +422,7 @@ begin
     while processa do
         begin
             textBackground (BLUE);
-            mensagem ('PTOPCAO', 0);   { Qual sua opção? }
+            sintWriteLn('Qual sua opção?');
             textBackground (BLACK);
 
             selecionarOpcoes(processa);
